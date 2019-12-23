@@ -4,6 +4,7 @@ import sys
 import shutil
 
 from tkinter import *
+from tkinter import ttk
 from tkinter.filedialog import askdirectory
 from tkinter.messagebox import showerror
 from PIL import Image, ImageTk
@@ -97,47 +98,48 @@ class SplitSeq:
                 count += 1
 
 class MainWindow:
-    def __init__(self, master, directory):
-        self._image1 = None
-        self._image2 = None
-        self._photo1 = None
-        self._photo2 = None
-        self._imagelabel1 = None
-        self._imagelabel2 = None
+    def __init__(self, master, directory=None):
+        self.title = 'ImageMarker'
         self.mark_count = 1
         self.marked = False
         
         self._mainwin = master
-        os.chdir(directory)
-        self.files = FileSeq(directory)
-        self.files.only_images()
+        self._mainwin.title(self.title)
+        self._mainwin.geometry('1010x600')
+        self._mainwin.resizable(0, 0)
 
-        self._imagelabel1 = Label(self._mainwin)
-        self._imagelabel2 = Label(self._mainwin)
+        # Menu Bar
+        self._menubar = Menu(self._mainwin)
+        self._menu_file = Menu(self._menubar)
+        self._menu_file.add_command(label='Open Directory', command=self.open)
+        self._menu_file.add_command(label='Split Image Files', command=self.split)
+        self._menu_file.add_command(label='Quit', command=self._mainwin.destroy)
+        self._menu_about = Menu(self._menubar)
+        self._menubar.add_cascade(menu=self._menu_file, label='File')
+        self._menubar.add_cascade(menu=self._menu_about, label="About")
+        self._mainwin['menu'] = self._menubar
 
-        try:
-            self._images_to_label(self.files.get_pair())
-        except IndexError:
-            # TODO: This should be handled better. Instead of showing an error and returning, 
-            #       a dialog showing the error to the user should be shown and then an exception 
-            #       should be thrown for the caller to handle.
-            self._mainwin.withdraw()
-            showerror('ImageMarker: No Images', 'Not enough images in the directory.')
-            self._mainwin.destroy()
-            return
-        self._imagelabel1.grid(row=1, column=0)
-        self._imagelabel2.grid(row=1, column=2)
+        # Image Frame for showing a pair of images
+        self._image_frame = ttk.Frame(self._mainwin, relief="groove", borderwidth=2)
+        self._imagelabel1 = Label(self._image_frame)
+        self._imagelabel2 = Label(self._image_frame)
+        self._imagelabel1.grid(row=0, column=1, sticky=(N))
+        self._imagelabel2.grid(row=0, column=2, sticky=(N))
 
-        
-        Button(self._mainwin, text="Previous", command=self.prev).grid(row=2, column=0)
-        Button(self._mainwin, text="Next", command=self.next).grid(row=2, column=2)
-        Button(self._mainwin, text="Split", command=self.split).grid(row=0, column=0)
-        Button(self._mainwin, text="Quit", command=self._mainwin.destroy).grid(row=0, column=2)
-        self._cmark = Checkbutton(self._mainwin, text="Mark", command=self.cmark)
-        self._cmark.grid(row=2, column=1)
+        # Main controls
+        self._control_frame = ttk.Frame(self._mainwin, relief="ridge", borderwidth=0, padding=(100, 5, 100, 5))
+        self._cmark = Checkbutton(self._control_frame, text="Mark", command=self.cmark)
+        self._cmark.grid(row=0, column=1)
+        self._lcount = Label(self._control_frame, text=self.mark_count)
+        self._lcount.grid(row=1, column=1)
 
-        self._lcount = Label(self._mainwin, text=self.mark_count)
-        self._lcount.grid(row=0, column=1)
+        Button(self._control_frame, text="Previous", command=self.prev, width=10).grid(row=0, column=0, sticky=(W))
+        Button(self._control_frame, text="Next", command=self.next, width=10).grid(row=0, column=2, sticky=(E))
+
+        # Pack frames
+        self._control_frame.pack()
+        self._image_frame.pack_propagate(0)
+        self._image_frame.pack(fill=BOTH, expand=1)
 
         # Keyboard Bindings
         self._mainwin.bind('<Right>', self._kbd_next)
@@ -148,6 +150,28 @@ class MainWindow:
         self._mainwin.bind('<Shift-Right>', self._kbd_next_mark)
         self._mainwin.bind('<Shift-Left>', self._kbd_prev_mark)
                 
+        if directory is not None:
+            self.open(directory)
+
+    def open(self, directory=None):
+        if directory is None:
+            directory = askdirectory()
+
+        os.chdir(directory)
+        self.files = FileSeq(directory)
+        self.files.only_images()
+        try:
+            self._images_to_label(self.files.get_pair())
+        except IndexError:
+            # TODO: This should be handled better. Instead of showing an error and returning, 
+            #       a dialog showing the error to the user should be shown and then an exception 
+            #       should be thrown for the caller to handle.
+            #self._mainwin.withdraw()
+            showerror('ImageMarker: No Images', 'Not enough images in the directory.')
+            #self._mainwin.destroy()
+      
+        self._mainwin.title('{0} [{1}]'.format(self.title, directory))
+
     def prev(self):    
         self.move(self.files.prev)
         
@@ -234,10 +258,10 @@ class MainWindow:
         return image.resize(new_size, Image.HAMMING)
 
     def _images_to_label(self, pair):
-        self._image1 = self._scale_image(Image.open(pair[0]))
-        self._image2 = self._scale_image(Image.open(pair[1]))
-        self._photo1 = ImageTk.PhotoImage(self._image1)
-        self._photo2 = ImageTk.PhotoImage(self._image2)
+        image1 = self._scale_image(Image.open(pair[0]))
+        image2 = self._scale_image(Image.open(pair[1]))
+        self._photo1 = ImageTk.PhotoImage(image1)
+        self._photo2 = ImageTk.PhotoImage(image2)
 
         self._imagelabel1.config(image=self._photo1)
         self._imagelabel2.config(image=self._photo2)
@@ -248,19 +272,12 @@ class MainWindow:
         s.copy_files()
 
 def main():
-    root = Tk()
-    root.title('ImageMaker')
-    root.geometry('1024x500')
-
+    dir = None
     if len(sys.argv) > 1:
-        # Directory was given on the command line
-        dirname = os.path.abspath(sys.argv[1])
-    else:
-        dirname = askdirectory()
-    if len(dirname) > 0:
-        root.title('ImageMaker [{0}]'.format(dirname))
-        w = MainWindow(root, dirname)
-        root.mainloop()
+         dir = os.path.abspath(sys.argv[1])
+    root = Tk()
+    w = MainWindow(root, dir)
+    root.mainloop()
 
 if __name__ == '__main__':
     main()

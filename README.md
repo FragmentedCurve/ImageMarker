@@ -12,7 +12,3 @@ The code was originally pulled from a private commercial project and was refacto
   * Down -- First pair
   * Space -- Toggle mark
 
-## Screenshots
-
-![Opening Directory](screenshot1.png)
-![Marking different images](screenshot2.png)
