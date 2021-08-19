@@ -1,4 +1,4 @@
-import imghdr
+import magic
 import os
 import sys
 import shutil
@@ -23,8 +23,11 @@ class FileSeq:
         for name in self._orig:
             filepath = os.path.join(self._dir, name)
 
-            if os.path.isdir(filepath) or os.path.islink(filepath) or imghdr.what(filepath) == None:
+            if os.path.isdir(filepath) or os.path.islink(filepath):
                 self._filenames.remove(name)
+            else:
+                mime = magic.from_file(filepath, mime=True)
+                if mime[:len('image/')] != 'image/': self._filenames.remove(name)
                 
     def get_split_lists(self):
         lists = list()
