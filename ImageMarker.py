@@ -9,6 +9,7 @@ from tkinter.filedialog import askdirectory
 from tkinter.messagebox import showerror
 from PIL import Image, ImageTk
 
+
 class FileSeq:
     def __init__(self, dir):
         self._dir = os.path.abspath(dir)
@@ -79,26 +80,23 @@ class FileSeq:
 
     def forward(self):
         self._index = len(self._filenames) - 2
+
         
-class SplitSeq:
-    def __init__(self, fileseq):
-        self.files = fileseq
+def make_dirs(files: FileSeq) -> None:
+    for i in range(1, files.how_many_marks() + 2):
+        newdir = os.path.join(files.get_dir(), str(i))
+        if not os.path.exists(newdir):
+            os.mkdir(newdir)
 
-    def make_dirs(self):
-        for i in range(1, self.files.how_many_marks() + 2):
-            newdir = os.path.join(self.files.get_dir(), str(i))
-            if not os.path.exists(newdir):
-                os.mkdir(newdir)
-
-    def copy_files(self):
-        olddir = self.files.get_dir()
-        lists = self.files.get_split_lists()
-        for i in range(len(lists)):
-            newdir = os.path.join(self.files.get_dir(), str(i + 1))
-            count = 1  
-            for f in lists[i]:
-                shutil.copyfile(os.path.join(olddir, f), os.path.join(newdir, f))
-                count += 1
+def copy_files(files: FileSeq) -> None:
+    olddir = files.get_dir()
+    lists = files.get_split_lists()
+    for i in range(len(lists)):
+        newdir = os.path.join(files.get_dir(), str(i + 1))
+        count = 1  
+        for f in lists[i]:
+            shutil.copyfile(os.path.join(olddir, f), os.path.join(newdir, f))
+            count += 1
 
 class MainWindow:
     def __init__(self, master, directory=None):
@@ -270,9 +268,8 @@ class MainWindow:
         self._imagelabel2.config(image=self._photo2)
 
     def split(self):
-        s = SplitSeq(self.files)
-        s.make_dirs()
-        s.copy_files()
+        make_dirs(self.files)
+        copy_files(self.files)
 
 def main():
     dir = None
